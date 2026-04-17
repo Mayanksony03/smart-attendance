@@ -8,9 +8,7 @@ Click Database Access → Add new user → set username + password
 Click Network Access → Add IP Address → Allow access from anywhere (0.0.0.0/0)
 Click Connect on your cluster → Drivers → Copy the connection string
 It looks like this:
-```
-   mongodb+srv://YOUR_USER:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/?retryWrites=true&w=majority
-   ```
+
 ---
 Step 2 — Deploy to Railway
 Push code to GitHub:
@@ -25,7 +23,7 @@ Go to https://railway.app → New Project → Deploy from GitHub repo
 Select your repo
 Go to Variables tab → click New Variable → add:
 Name:  `MONGO_URI`
-Value: `mongodb+srv://YOUR_USER:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/attendance_system?retryWrites=true&w=majority`
+`
 Railway restarts and your app is live ✅
 ---
 Step 3 — Deploy to Render (Alternative)
@@ -35,7 +33,7 @@ Set Build Command: `pip install -r requirements.txt`
 Set Start Command: `python app.py`
 Go to Environment tab → Add variable:
 Key:   `MONGO_URI`
-Value: `mongodb+srv://YOUR_USER:YOUR_PASSWORD@cluster0.xxxxx.mongodb.net/attendance_system?retryWrites=true&w=majority`
+
 Click Deploy ✅
 ---
 Local Development
