@@ -12,9 +12,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
 
-app.secret_key     = os.environ.get("SECRET_KEY", "smartattend-secret-2024")
-ADMIN_EMAIL        = os.environ.get("ADMIN_EMAIL", "attendancecollege26@gmail.com")
-OTP_EXPIRY_MINUTES = 10
+
 
 COLLEGE_LAT        = float(os.environ.get("COLLEGE_LAT",  "23.2599"))
 COLLEGE_LNG        = float(os.environ.get("COLLEGE_LNG",  "77.4126"))
