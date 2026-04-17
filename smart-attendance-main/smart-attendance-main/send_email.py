@@ -3,9 +3,6 @@ import threading
 import sib_api_v3_sdk
 from sib_api_v3_sdk.rest import ApiException
 
-BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "")
-FROM_EMAIL    = "attendancecollege26@gmail.com"
-FROM_NAME     = "SmartAttend"
 
 
 def send_email(to_email, subject, body):
