@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Expired — SmartAttend</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<!-- TOP BAR -->
+<div class="top-bar">
+  <a href="/login" class="top-bar-login">Admin Login</a>
+</div>
+
+<!-- SITE HEADER -->
+<header class="site-header">
+  <a href="/" class="site-header-logo">
+    <img src="https://tse1.mm.bing.net/th/id/OIP._cxocF1ot1j3Ar1J9xLaHgHaDB?pid=Api&h=220&P=0"
+         onerror="this.src='https://upload.wikimedia.org/wikipedia/en/thumb/2/2e/ITM_University_Gwalior_logo.png/200px-ITM_University_Gwalior_logo.png';this.onerror=null;"
+         alt="ITM University" style="height:60px;">
+    <div class="site-header-logo-text">
+      <div class="title">ITM University, Gwalior</div>
+      <div class="subtitle">Gwalior &middot; MP &middot; India &middot; "Celebrating Dreams"</div>
+    </div>
+  </a>
+  <div class="site-header-right">
+    <div class="system-name">Smart Attendance System</div>
+    <div class="system-sub">Face Recognition &middot; GPS Verification &middot; WiFi Check</div>
+  </div>
+</header>
+
+<div class="page-center">
+  <div class="section-card" style="text-align:center;">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:72px;color:var(--red);line-height:1;">TIME UP</div>
+    <div style="color:var(--muted);font-size:14px;margin-top:12px;">
+      The attendance window for this session has expired.
+    </div>
+    <div style="color:var(--muted);font-size:13px;margin-top:8px;">
+      Please contact your teacher if you need assistance.
+    </div>
+  </div>
+</div>
+</body>
+</html>

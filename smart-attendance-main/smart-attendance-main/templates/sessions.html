@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Sessions — SmartAttend</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<!-- TOP BAR -->
+<div class="top-bar">
+  <a href="/logout" class="top-bar-login">Logout</a>
+</div>
+
+<!-- SITE HEADER -->
+<header class="site-header">
+  <a href="/" class="site-header-logo">
+    <img src="https://tse1.mm.bing.net/th/id/OIP._cxocF1ot1j3Ar1J9xLaHgHaDB?pid=Api&h=220&P=0"
+         onerror="this.src='https://upload.wikimedia.org/wikipedia/en/thumb/2/2e/ITM_University_Gwalior_logo.png/200px-ITM_University_Gwalior_logo.png';this.onerror=null;"
+         alt="ITM University" style="height:60px;">
+    <div class="site-header-logo-text">
+      <div class="title">ITM University, Gwalior</div>
+      <div class="subtitle">Gwalior &middot; MP &middot; India &middot; "Celebrating Dreams"</div>
+    </div>
+  </a>
+  <div class="site-header-right">
+    <div class="system-name">Smart Attendance System</div>
+    <div class="system-sub">Face Recognition &middot; GPS Verification &middot; WiFi Check</div>
+  </div>
+</header>
+
+<!-- NAV MENU -->
+<nav class="nav-menu">
+  <a href="/">Home</a>
+  {% if session.get('role') == 'admin' %}
+  <a href="/admin/branches">Branches</a>
+  <a href="/admin/teachers">Teachers</a>
+  <a href="/register">Register Student</a>
+  <a href="/delete">Manage Students</a>
+  {% elif session.get('role') == 'teacher' %}
+  <a href="/create_session">Create Session</a>
+  {% endif %}
+  <a href="/sessions" class="active">Sessions</a>
+  <a href="/logout" class="btn-logout nav-menu-right">Logout</a>
+</nav>
+
+
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-header-title">CLASS<br>SESSIONS</div>
+      <div class="page-header-sub">03 — Mark, report and end sessions</div>
+    </div>
+    {% if session.get('role') == 'teacher' %}
+    <a href="/create_session" class="btn btn-primary btn-sm" style="width:auto;padding:12px 24px;">+ NEW SESSION</a>
+    {% endif %}
+  </div>
+
+  {% if session.get('role') == 'admin' %}
+  <!-- Admin Filter Panel -->
+  <div style="border:1px solid var(--border);padding:24px;margin-bottom:24px;background:var(--gray);">
+    <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:16px;">
+      Filter Sessions by Branch / Semester / Section
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+      <div style="flex:1;min-width:160px;">
+        <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px;">Branch</label>
+        <select id="filter-branch" onchange="applyFilters()" style="width:100%;background:var(--black);border:1px solid var(--border);color:var(--white);padding:10px 12px;font-size:13px;">
+          <option value="">All Branches</option>
+          {% set seen_branches = [] %}
+          {% for row in data %}
+            {% if row[4] and row[4] not in seen_branches %}
+              {% set _ = seen_branches.append(row[4]) %}
+              <option value="{{ row[4] }}">{{ row[4] }}</option>
+            {% endif %}
+          {% endfor %}
+        </select>
+      </div>
+      <div style="flex:0 0 120px;">
+        <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px;">Semester</label>
+        <select id="filter-sem" onchange="applyFilters()" style="width:100%;background:var(--black);border:1px solid var(--border);color:var(--white);padding:10px 12px;font-size:13px;">
+          <option value="">All Sems</option>
+          <option value="1">Sem 1</option><option value="2">Sem 2</option>
+          <option value="3">Sem 3</option><option value="4">Sem 4</option>
+          <option value="5">Sem 5</option><option value="6">Sem 6</option>
+          <option value="7">Sem 7</option><option value="8">Sem 8</option>
+        </select>
+      </div>
+      <div style="flex:0 0 120px;">
+        <label style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;display:block;margin-bottom:6px;">Section</label>
+        <select id="filter-sec" onchange="applyFilters()" style="width:100%;background:var(--black);border:1px solid var(--border);color:var(--white);padding:10px 12px;font-size:13px;">
+          <option value="">All Sections</option>
+          <option value="A">A</option><option value="B">B</option><option value="C">C</option>
+          <option value="D">D</option><option value="E">E</option><option value="F">F</option>
+        </select>
+      </div>
+      <div>
+        <button onclick="resetFilters()" style="background:transparent;border:1px solid var(--border);color:var(--muted);padding:10px 18px;font-size:12px;cursor:pointer;font-weight:600;text-transform:uppercase;letter-spacing:0.08em;">
+          Reset
+        </button>
+      </div>
+    </div>
+    <div id="filter-summary" style="margin-top:12px;font-size:12px;color:var(--muted);display:none;"></div>
+  </div>
+  {% endif %}
+
+  {% if data %}
+  <div style="border:1px solid var(--border);" id="sessions-table-wrap">
+    <table class="data-table" id="sessions-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Subject</th>
+          <th>Code</th>
+          <th>Class</th>
+          <th>Started At</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in data %}
+        <tr class="session-row"
+            data-branch="{{ row[4] }}"
+            data-sem="{{ row[5] }}"
+            data-sec="{{ row[6] }}">
+          <td style="color:var(--muted);font-size:12px;font-family:monospace;">{{ loop.index }}</td>
+          <td><strong style="font-size:15px;">{{ row[1] }}</strong></td>
+          <td><span class="time-chip">{{ row[2] }}</span></td>
+          <td style="font-size:13px;">{{ row[4] }} &nbsp;S-{{ row[5] }} &nbsp;Sec {{ row[6] }}</td>
+          <td style="color:var(--muted);font-size:12px;font-family:monospace;">{{ row[3] }}</td>
+          <td>
+            <div class="action-group">
+              {% if session.get('role') == 'admin' %}
+                <a href="/report/{{ row[0] }}" class="btn btn-sm btn-report">REPORT</a>
+              {% else %}
+                <a href="/start/{{ row[0] }}" class="btn btn-sm btn-mark">MARK</a>
+                <a href="/report/{{ row[0] }}" class="btn btn-sm btn-report">REPORT</a>
+                <a href="/end/{{ row[0] }}" class="btn btn-sm btn-end" onclick="return confirm('End session and send absence emails?')">END</a>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <div id="no-filter-results" style="display:none;border:1px solid var(--border);padding:40px;text-align:center;">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:32px;color:var(--muted);">NO SESSIONS MATCH FILTER</div>
+    <p style="color:var(--muted);font-size:13px;margin-top:8px;">Try a different Branch, Semester, or Section combination.</p>
+  </div>
+  {% else %}
+  <div style="border:1px solid var(--border);padding:64px;text-align:center;">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:48px;color:var(--muted);margin-bottom:12px;">NO SESSIONS YET</div>
+    {% if session.get('role') == 'teacher' %}
+    <p style="color:var(--muted);font-size:13px;margin-bottom:24px;">Create a class session to start marking attendance</p>
+    <a href="/create_session" class="btn btn-primary" style="width:auto;display:inline-flex;padding:14px 32px;">CREATE FIRST SESSION →</a>
+    {% else %}
+    <p style="color:var(--muted);font-size:13px;">No sessions have been created yet by any teacher.</p>
+    {% endif %}
+  </div>
+  {% endif %}
+
+  <a href="/" class="back-link">← Back to Home</a>
+</div>
+
+<script>
+function applyFilters() {
+  const branch = document.getElementById('filter-branch').value.toLowerCase();
+  const sem    = document.getElementById('filter-sem').value;
+  const sec    = document.getElementById('filter-sec').value.toLowerCase();
+
+  const rows = document.querySelectorAll('.session-row');
+  let visible = 0;
+
+  rows.forEach(row => {
+    const rb = (row.dataset.branch || '').toLowerCase();
+    const rs = (row.dataset.sem   || '');
+    const rc = (row.dataset.sec   || '').toLowerCase();
+
+    const matchB = !branch || rb === branch;
+    const matchS = !sem    || rs === sem;
+    const matchC = !sec    || rc === sec;
+
+    if (matchB && matchS && matchC) {
+      row.style.display = '';
+      visible++;
+    } else {
+      row.style.display = 'none';
+    }
+  });
+
+  const summaryEl = document.getElementById('filter-summary');
+  const noResults = document.getElementById('no-filter-results');
+  const tableWrap = document.getElementById('sessions-table-wrap');
+
+  if (branch || sem || sec) {
+    const parts = [];
+    if (branch) parts.push('Branch: <strong>' + document.getElementById('filter-branch').options[document.getElementById('filter-branch').selectedIndex].text + '</strong>');
+    if (sem)    parts.push('Sem: <strong>' + sem + '</strong>');
+    if (sec)    parts.push('Section: <strong>' + sec.toUpperCase() + '</strong>');
+    summaryEl.innerHTML = 'Showing ' + visible + ' session(s) — ' + parts.join(' &nbsp;·&nbsp; ');
+    summaryEl.style.display = 'block';
+  } else {
+    summaryEl.style.display = 'none';
+  }
+
+  if (visible === 0) {
+    tableWrap && (tableWrap.style.display = 'none');
+    noResults.style.display = 'block';
+  } else {
+    tableWrap && (tableWrap.style.display = '');
+    noResults.style.display = 'none';
+  }
+}
+
+function resetFilters() {
+  document.getElementById('filter-branch').value = '';
+  document.getElementById('filter-sem').value    = '';
+  document.getElementById('filter-sec').value    = '';
+  applyFilters();
+}
+</script>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

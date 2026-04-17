@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Register — SmartAttend</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>
+.cam-tip {
+  font-size:11px; color:#666; text-align:center;
+  margin-top:8px; letter-spacing:0.05em;
+}
+</style>
+</head>
+<body>
+<!-- TOP BAR -->
+<div class="top-bar">
+  <a href="/logout" class="top-bar-login">Logout</a>
+</div>
+
+<!-- SITE HEADER -->
+<header class="site-header">
+  <a href="/" class="site-header-logo">
+    <img src="https://tse1.mm.bing.net/th/id/OIP._cxocF1ot1j3Ar1J9xLaHgHaDB?pid=Api&h=220&P=0"
+         onerror="this.src='https://upload.wikimedia.org/wikipedia/en/thumb/2/2e/ITM_University_Gwalior_logo.png/200px-ITM_University_Gwalior_logo.png';this.onerror=null;"
+         alt="ITM University" style="height:60px;">
+    <div class="site-header-logo-text">
+      <div class="title">ITM University, Gwalior</div>
+      <div class="subtitle">Gwalior &middot; MP &middot; India &middot; "Celebrating Dreams"</div>
+    </div>
+  </a>
+  <div class="site-header-right">
+    <div class="system-name">Smart Attendance System</div>
+    <div class="system-sub">Face Recognition &middot; GPS Verification &middot; WiFi Check</div>
+  </div>
+</header>
+
+<!-- NAV MENU -->
+<nav class="nav-menu">
+  <a href="/">Home</a>
+  {% if session.get('role') == 'admin' %}
+  <a href="/admin/branches">Branches</a>
+  <a href="/admin/teachers">Teachers</a>
+  <a href="/register" class="active">Register Student</a>
+  <a href="/delete">Manage Students</a>
+  {% elif session.get('role') == 'teacher' %}
+  <a href="/create_session">Create Session</a>
+  {% endif %}
+  <a href="/sessions">Sessions</a>
+  <a href="/logout" class="btn-logout nav-menu-right">Logout</a>
+</nav>
+
+
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-header-title">REGISTER<br>STUDENT</div>
+      <div class="page-header-sub">01 — Face capture &amp; profile setup</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);max-width:960px;">
+    <!-- Left: Form -->
+    <div style="background:var(--black);padding:40px;">
+      <div class="form-group">
+        <label>Full Name</label>
+        <input type="text" id="name" placeholder="e.g. Rahul Sharma" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label>Roll Number</label>
+        <input type="text" id="roll_no" placeholder="e.g. 101" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label>Branch</label>
+        <select id="branch" class="input-text">
+          <option value="" disabled selected>Select Branch</option>
+          {% for branch in branches %}
+          <option value="{{ branch.name }}">{{ branch.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group" style="display: flex; gap: 10px;">
+        <div style="flex: 1;">
+          <label>Semester</label>
+          <select id="semester" class="input-text">
+            <option value="" disabled selected>Select Sem</option>
+            <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+            <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+            <option value="7">7</option><option value="8">8</option>
+          </select>
+        </div>
+        <div style="flex: 1;">
+          <label>Section</label>
+          <select id="section" class="input-text">
+            <option value="" disabled selected>Section</option>
+            <option value="A">A</option><option value="B">B</option><option value="C">C</option>
+            <option value="D">D</option><option value="E">E</option><option value="F">F</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Student Email</label>
+        <input type="email" id="student_email" placeholder="student@college.edu">
+      </div>
+      <div class="form-group">
+        <label>Parent Email</label>
+        <input type="email" id="parent_email" placeholder="parent@gmail.com">
+      </div>
+      <hr class="divider">
+      <button class="btn btn-primary" id="register-btn" onclick="registerStudent()" disabled style="opacity:0.4;">
+        <span class="spinner" id="spin"></span>
+        REGISTER STUDENT →
+      </button>
+      <div class="msg" id="msg"></div>
+    </div>
+
+    <!-- Right: Camera -->
+    <div style="background:var(--gray);padding:40px;">
+      <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:16px;">Live Camera</div>
+
+      <div class="cam-wrap" id="cam-box">
+        <video id="video" autoplay playsinline muted style="width:100%;max-height:280px;object-fit:cover;"></video>
+        <div class="cam-corner tl"></div>
+        <div class="cam-corner tr"></div>
+        <div class="cam-corner bl"></div>
+        <div class="cam-corner br"></div>
+        <div class="cam-scan"></div>
+      </div>
+      <canvas id="canvas" style="display:none;" width="640" height="480"></canvas>
+
+      <p class="cam-tip" id="cam-tip">Using front camera (selfie mode)</p>
+
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button class="btn btn-secondary btn-sm" id="capture-btn" onclick="capturePhoto()" style="flex:1;padding:12px;">
+          CAPTURE PHOTO
+        </button>
+        <button class="btn btn-secondary btn-sm" id="retake-btn" onclick="retake()" style="flex:1;padding:12px;display:none;">
+          RETAKE
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <a href="/" class="back-link">← Back to Home</a>
+</div>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+<script>
+let capturedImage = null;
+let activeStream  = null;
+
+// Try cameras in this priority order:
+// 1. Front camera (user/selfie) — best for face registration
+// 2. Environment camera (rear)
+// 3. Any available camera
+async function startCamera() {
+  const attempts = [
+    { facingMode: "user",        width: { ideal:640 }, height: { ideal:480 }, label: "front camera" },
+    { facingMode: "environment", width: { ideal:640 }, height: { ideal:480 }, label: "rear camera"  },
+    { label: "any camera" }
+  ];
+
+  for (const attempt of attempts) {
+    const { label, ...videoConstraints } = attempt;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints });
+      if (activeStream) activeStream.getTracks().forEach(t => t.stop());
+      activeStream = stream;
+      const video  = document.getElementById('video');
+      video.srcObject = stream;
+      document.getElementById('cam-tip').textContent = 'Using ' + label;
+      return true;
+    } catch(e) {
+      console.log('[CAM] Failed with ' + label + ':', e.message);
+    }
+  }
+
+  // All failed
+  document.getElementById('cam-box').innerHTML =
+    '<div style="padding:40px;text-align:center;color:#ff4444;">' +
+    '📷 Camera access denied.<br><small style="color:#888">Allow camera in your browser settings, then refresh.</small></div>';
+  document.getElementById('cam-tip').textContent = 'Camera blocked — allow access and refresh';
+  return false;
+}
+
+startCamera();
+
+function capturePhoto() {
+  const video  = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  const ctx    = canvas.getContext('2d');
+
+  if (!video.videoWidth) {
+    showMsg('Camera not ready yet. Please wait.', 'error');
+    return;
+  }
+
+  canvas.width  = video.videoWidth  || 640;
+  canvas.height = video.videoHeight || 480;
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  capturedImage = canvas.toDataURL('image/jpeg', 0.95);
+
+  document.getElementById('cam-box').innerHTML =
+    `<img src="${capturedImage}" style="width:100%;border-radius:0;">
+     <div class="cam-corner tl"></div><div class="cam-corner tr"></div>
+     <div class="cam-corner bl"></div><div class="cam-corner br"></div>`;
+
+  document.getElementById('capture-btn').style.display = 'none';
+  document.getElementById('retake-btn').style.display  = 'flex';
+  document.getElementById('register-btn').disabled     = false;
+  document.getElementById('register-btn').style.opacity = '1';
+  document.getElementById('cam-tip').textContent = 'Photo captured ✓';
+  showMsg('Photo captured. Fill in details and click Register.', 'info');
+}
+
+async function retake() {
+  capturedImage = null;
+  document.getElementById('cam-box').innerHTML =
+    `<video id="video" autoplay playsinline muted style="width:100%;max-height:280px;object-fit:cover;"></video>
+     <div class="cam-corner tl"></div><div class="cam-corner tr"></div>
+     <div class="cam-corner bl"></div><div class="cam-corner br"></div>
+     <div class="cam-scan"></div>`;
+  document.getElementById('capture-btn').style.display = 'flex';
+  document.getElementById('retake-btn').style.display  = 'none';
+  document.getElementById('register-btn').disabled     = true;
+  document.getElementById('register-btn').style.opacity = '0.4';
+  document.getElementById('msg').className = 'msg';
+  await startCamera();
+}
+
+async function registerStudent() {
+  const name          = document.getElementById('name').value.trim();
+  const roll_no       = document.getElementById('roll_no').value.trim();
+  const branch        = document.getElementById('branch').value;
+  const semester      = document.getElementById('semester').value;
+  const section       = document.getElementById('section').value;
+  const student_email = document.getElementById('student_email').value.trim();
+  const parent_email  = document.getElementById('parent_email').value.trim();
+
+  if (!name || !roll_no || !branch || !semester || !section || !student_email || !parent_email) return showMsg('Please fill all fields.', 'error');
+  if (!capturedImage) return showMsg('Please capture a photo first.', 'error');
+
+  document.getElementById('spin').style.display = 'block';
+  document.getElementById('register-btn').disabled = true;
+  document.getElementById('register-btn').style.opacity = '0.6';
+  showMsg('Processing face encoding — this may take a few seconds...', 'info');
+
+  try {
+    const res  = await fetch('/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, roll_no, branch, semester, section, student_email, parent_email, image: capturedImage })
+    });
+    const data = await res.json();
+    const ok   = data.message.toLowerCase().includes('registered');
+    showMsg(data.message, ok ? 'success' : 'error');
+    if (ok) {
+      document.getElementById('name').value          = '';
+      document.getElementById('roll_no').value       = '';
+      document.getElementById('branch').value        = '';
+      document.getElementById('semester').value      = '';
+      document.getElementById('section').value       = '';
+      document.getElementById('student_email').value = '';
+      document.getElementById('parent_email').value  = '';
+      setTimeout(retake, 2500);
+    }
+  } catch(e) {
+    showMsg('Network error: ' + e.message, 'error');
+  } finally {
+    document.getElementById('spin').style.display = 'none';
+    document.getElementById('register-btn').disabled = false;
+    document.getElementById('register-btn').style.opacity = '1';
+  }
+}
+</script>
+</body>
+</html>

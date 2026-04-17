@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Verify OTP — SmartAttend</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<!-- TOP BAR -->
+<div class="top-bar">
+  <a href="/login" class="top-bar-login">Admin Login</a>
+</div>
+
+<!-- SITE HEADER -->
+<header class="site-header">
+  <a href="/" class="site-header-logo">
+    <img src="https://tse1.mm.bing.net/th/id/OIP._cxocF1ot1j3Ar1J9xLaHgHaDB?pid=Api&h=220&P=0"
+         onerror="this.src='https://upload.wikimedia.org/wikipedia/en/thumb/2/2e/ITM_University_Gwalior_logo.png/200px-ITM_University_Gwalior_logo.png';this.onerror=null;"
+         alt="ITM University" style="height:60px;">
+    <div class="site-header-logo-text">
+      <div class="title">ITM University, Gwalior</div>
+      <div class="subtitle">Gwalior &middot; MP &middot; India &middot; "Celebrating Dreams"</div>
+    </div>
+  </a>
+  <div class="site-header-right">
+    <div class="system-name">Smart Attendance System</div>
+    <div class="system-sub">Face Recognition &middot; GPS Verification &middot; WiFi Check</div>
+  </div>
+</header>
+
+
+<div class="page-center">
+  <div class="section-card">
+    <div class="section-title">ENTER<br>YOUR OTP</div>
+    <div class="section-sub">Check {{ admin_email }}</div>
+
+    {% if error %}
+    <div class="msg show error" style="margin-bottom:16px;">{{ error }}</div>
+    {% endif %}
+
+    <form method="POST" id="otp-form">
+      <input type="hidden" name="otp" id="otp-hidden">
+
+      <div class="otp-inputs">
+        <input class="otp-box" type="text" maxlength="1" inputmode="numeric" id="d0" autofocus>
+        <input class="otp-box" type="text" maxlength="1" inputmode="numeric" id="d1">
+        <input class="otp-box" type="text" maxlength="1" inputmode="numeric" id="d2">
+        <input class="otp-box" type="text" maxlength="1" inputmode="numeric" id="d3">
+        <input class="otp-box" type="text" maxlength="1" inputmode="numeric" id="d4">
+        <input class="otp-box" type="text" maxlength="1" inputmode="numeric" id="d5">
+      </div>
+
+      <div style="font-size:12px;color:var(--muted);text-align:center;margin-bottom:24px;letter-spacing:0.05em;">
+        EXPIRES IN <span id="countdown" style="color:var(--lime);font-weight:700;">10:00</span>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="verify-btn" disabled style="opacity:0.4;">
+        VERIFY &amp; LOGIN →
+      </button>
+    </form>
+
+    <hr class="divider">
+
+    <a href="/resend-otp" style="font-size:12px;color:var(--muted);text-decoration:none;text-transform:uppercase;letter-spacing:0.1em;">
+      Didn't receive? <span style="color:var(--lime);">Resend OTP</span>
+    </a>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+<script>
+const boxes  = [0,1,2,3,4,5].map(i => document.getElementById('d'+i));
+const btn    = document.getElementById('verify-btn');
+const hidden = document.getElementById('otp-hidden');
+
+boxes.forEach((box, i) => {
+  box.addEventListener('input', () => {
+    box.value = box.value.replace(/\D/g,'');
+    if (box.value && i < 5) boxes[i+1].focus();
+    const val = boxes.map(b => b.value).join('');
+    hidden.value = val;
+    btn.disabled = val.length < 6;
+    btn.style.opacity = val.length < 6 ? '0.4' : '1';
+  });
+  box.addEventListener('keydown', e => {
+    if (e.key === 'Backspace' && !box.value && i > 0) boxes[i-1].focus();
+  });
+});
+
+let secs = 600;
+const el = document.getElementById('countdown');
+const t = setInterval(() => {
+  secs--;
+  const m = String(Math.floor(secs/60)).padStart(2,'0');
+  const s = String(secs%60).padStart(2,'0');
+  el.textContent = m+':'+s;
+  if (secs <= 60) el.style.color = 'var(--red)';
+  if (secs <= 0) { clearInterval(t); el.textContent='EXPIRED'; btn.disabled=true; btn.style.opacity='0.3'; }
+}, 1000);
+</script>
+</body>
+</html>

@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Create Session — SmartAttend</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<!-- TOP BAR -->
+<div class="top-bar">
+  <a href="/logout" class="top-bar-login">Logout</a>
+</div>
+
+<!-- SITE HEADER -->
+<header class="site-header">
+  <a href="/" class="site-header-logo">
+    <img src="https://tse1.mm.bing.net/th/id/OIP._cxocF1ot1j3Ar1J9xLaHgHaDB?pid=Api&h=220&P=0"
+         alt="ITM University" style="height:60px;">
+    <div class="site-header-logo-text">
+      <div class="title">ITM University, Gwalior</div>
+      <div class="subtitle">Gwalior &middot; MP &middot; India &middot; "Celebrating Dreams"</div>
+    </div>
+  </a>
+  <div class="site-header-right">
+    <div class="system-name">Smart Attendance System</div>
+    <div class="system-sub">Face Recognition &middot; GPS Verification &middot; WiFi Check</div>
+  </div>
+</header>
+
+<!-- NAV MENU -->
+<nav class="nav-menu">
+  <a href="/">Home</a>
+  {% if session.get('role') == 'admin' %}
+  <a href="/admin/branches">Branches</a>
+  <a href="/admin/teachers">Teachers</a>
+  <a href="/register">Register Student</a>
+  <a href="/delete">Manage Students</a>
+  {% elif session.get('role') == 'teacher' %}
+  <a href="/create_session" class="active">Create Session</a>
+  {% endif %}
+  <a href="/sessions">Sessions</a>
+  <a href="/logout" class="btn-logout nav-menu-right">Logout</a>
+</nav>
+
+
+<div class="page-center">
+  <div class="section-card">
+    <div class="section-title">NEW<br>SESSION</div>
+    <div class="section-sub">02 — Create a class session</div>
+
+    <form method="POST">
+      <div class="form-group">
+        <label>Subject Name</label>
+        <input type="text" name="subject_name" placeholder="e.g. Data Structures" required>
+      </div>
+      <div class="form-group">
+        <label>Subject Code</label>
+        <input type="text" name="subject_code" placeholder="e.g. CS301" required>
+      </div>
+      <div class="form-group">
+        <label>Branch</label>
+        <select name="branch" class="input-text" required style="width: 100%; border: 1px solid #333; background: #0a0a0a; color: #fff; padding: 12px; font-size: 14px; border-radius: 4px;">
+          <option value="" disabled selected>Select Branch</option>
+          {% for branch in branches %}
+          <option value="{{ branch.name }}">{{ branch.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group" style="display: flex; gap: 10px;">
+        <div style="flex: 1;">
+          <label>Semester</label>
+          <select name="semester" class="input-text" required style="width: 100%; border: 1px solid #333; background: #0a0a0a; color: #fff; padding: 12px; font-size: 14px; border-radius: 4px;">
+            <option value="" disabled selected>Select Sem</option>
+            <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+            <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+            <option value="7">7</option><option value="8">8</option>
+          </select>
+        </div>
+        <div style="flex: 1;">
+          <label>Section</label>
+          <select name="section" class="input-text" required style="width: 100%; border: 1px solid #333; background: #0a0a0a; color: #fff; padding: 12px; font-size: 14px; border-radius: 4px;">
+            <option value="" disabled selected>Section</option>
+            <option value="A">A</option><option value="B">B</option><option value="C">C</option>
+            <option value="D">D</option><option value="E">E</option><option value="F">F</option>
+          </select>
+        </div>
+      </div>
+      <hr class="divider">
+      <button type="submit" class="btn btn-primary">START SESSION →</button>
+    </form>
+
+    <a href="/" class="back-link">← Back</a>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

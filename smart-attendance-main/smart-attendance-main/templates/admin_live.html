@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Live Attendance — SmartAttend</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>
+.live-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--green);
+  animation: pulse 1.2s infinite;
+  display: inline-block;
+}
+@keyframes pulse {
+  0%,100% { opacity:1; transform:scale(1); }
+  50%      { opacity:0.4; transform:scale(1.4); }
+}
+.student-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  animation: slideIn 0.4s ease;
+}
+@keyframes slideIn {
+  from { opacity:0; transform:translateX(-12px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+.qr-box {
+  background: white;
+  padding: 12px;
+  border-radius: 4px;
+  display: inline-block;
+  margin: 16px auto;
+}
+</style>
+</head>
+<body>
+<!-- TOP BAR -->
+<div class="top-bar">
+  <a href="/logout" class="top-bar-login">Logout</a>
+</div>
+
+<!-- SITE HEADER -->
+<header class="site-header">
+  <a href="/" class="site-header-logo">
+    <img src="https://tse1.mm.bing.net/th/id/OIP._cxocF1ot1j3Ar1J9xLaHgHaDB?pid=Api&h=220&P=0"
+         alt="ITM University" style="height:60px;">
+    <div class="site-header-logo-text">
+      <div class="title">ITM University, Gwalior</div>
+      <div class="subtitle">Gwalior &middot; MP &middot; India &middot; "Celebrating Dreams"</div>
+    </div>
+  </a>
+  <div class="site-header-right">
+    <div class="system-name">Smart Attendance System</div>
+    <div class="system-sub">Face Recognition &middot; GPS Verification &middot; WiFi Check</div>
+  </div>
+</header>
+
+<!-- NAV MENU -->
+<nav class="nav-menu">
+  <a href="/">Home</a>
+  {% if session.get('role') == 'admin' %}
+  <a href="/admin/branches">Branches</a>
+  <a href="/admin/teachers">Teachers</a>
+  <a href="/register">Register Student</a>
+  <a href="/delete">Manage Students</a>
+  {% elif session.get('role') == 'teacher' %}
+  <a href="/create_session">Create Session</a>
+  {% endif %}
+  <a href="/sessions">Sessions</a>
+  <a href="/logout" class="btn-logout nav-menu-right">Logout</a>
+</nav>
+
+
+<div class="page" style="padding-top:96px;">
+  <div class="page-header">
+    <div>
+      <div class="page-header-title">LIVE<br>ATTENDANCE</div>
+      <div class="page-header-sub">
+        <span class="live-dot"></span>
+        {{ subject_name }} — {{ subject_code }}
+      </div>
+    </div>
+    <button class="btn btn-danger btn-sm" onclick="endSession()" style="width:auto;padding:12px 24px;">
+      END SESSION
+    </button>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);max-width:960px;">
+
+    <!-- Left: QR + Timer -->
+    <div style="background:var(--black);padding:40px;text-align:center;">
+      <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:20px;">
+        Share this link with students
+      </div>
+
+      <!-- Admin GPS Status Badge -->
+      <div id="admin-gps-badge" style="
+        font-size:12px; font-weight:600; color:#ffaa00;
+        border: 1px solid #ffaa00; border-radius:2px;
+        padding:8px 14px; margin-bottom:16px;
+        background:rgba(255,170,0,0.08);
+      ">
+        📍 Getting your location... students must be within 20m
+      </div>
+
+      <!-- QR Code -->
+      <div class="qr-box" id="qr-container">
+        <canvas id="qr-canvas" width="180" height="180"></canvas>
+      </div>
+
+      <div style="font-size:12px;color:var(--muted);margin-bottom:20px;word-break:break-all;padding:0 10px;">
+        {{ student_url }}
+      </div>
+
+      <!-- Timer -->
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:14px;color:var(--muted);letter-spacing:3px;margin-bottom:8px;">
+        TIME REMAINING
+      </div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:72px;line-height:1;" id="timer-display">
+        10:00
+      </div>
+      <div style="height:6px;background:var(--border);border-radius:0;margin-top:12px;">
+        <div id="timer-bar" style="height:100%;width:100%;background:var(--lime);transition:width 1s linear;"></div>
+      </div>
+    </div>
+
+    <!-- Right: Live list -->
+    <div style="background:var(--gray);padding:40px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+        <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.12em;">
+          Present Students
+        </div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:var(--lime);" id="count">0</div>
+      </div>
+
+      <!-- Physical Head Count / Limit Controls -->
+      <div id="limit-bar" style="margin-bottom:16px;padding:16px;background:#1a0e08;border:1px solid #E8401C;border-radius:2px;">
+        <div style="font-size:11px;font-weight:700;color:#E8401C;letter-spacing:0.1em;text-transform:uppercase;margin-bottom:4px;">
+          🧮 Count Heads Physically
+        </div>
+        <div style="font-size:11px;color:#aaa;margin-bottom:10px;">
+          Count students present in class and set the limit here
+        </div>
+
+        <!-- Row 1: − display + buttons -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <button onclick="changeLimit(-1)" style="width:36px;height:36px;background:#E8401C;color:white;border:none;font-size:20px;cursor:pointer;border-radius:2px;font-weight:700;">−</button>
+          <span id="limit-display" style="font-size:26px;font-weight:700;color:#fff;min-width:48px;text-align:center;">0</span>
+          <button onclick="changeLimit(1)"  style="width:36px;height:36px;background:#E8401C;color:white;border:none;font-size:20px;cursor:pointer;border-radius:2px;font-weight:700;">+</button>
+          <span style="font-size:12px;color:#aaa;margin-left:6px;">max students &nbsp;<span id="limit-status" style="color:#28a745;font-weight:600;"></span></span>
+        </div>
+
+        <!-- Row 2: Type exact count -->
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input
+            type="number"
+            id="limit-input"
+            min="0" max="500"
+            placeholder="Type total count…"
+            style="flex:1;background:#0d0d0d;border:1px solid #E8401C;color:#fff;padding:8px 12px;font-size:14px;border-radius:2px;outline:none;min-width:0;"
+            onkeydown="if(event.key==='Enter') setLimitFromInput()"
+          >
+          <button onclick="setLimitFromInput()" style="background:#E8401C;color:white;border:none;padding:8px 16px;font-size:12px;font-weight:700;cursor:pointer;border-radius:2px;text-transform:uppercase;letter-spacing:0.06em;white-space:nowrap;">
+            Set →
+          </button>
+        </div>
+
+        <div style="font-size:11px;color:#666;margin-top:8px;">Set to 0 for unlimited. Only this many students can mark attendance.</div>
+      </div>
+
+      <div id="present-list">
+        <div style="color:var(--muted);font-size:13px;font-style:italic;">
+          Waiting for students to mark attendance...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <a href="/sessions" class="back-link">← Back to Sessions</a>
+</div>
+
+<!-- QR Code library -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+<script>
+const SESSION_ID  = "{{ session_id }}";
+const EXPIRES_AT  = Number("{{ expires_at }}");
+const STUDENT_URL = "{{ student_url }}";
+let   knownNames  = new Set();
+let   timerInt    = null;
+let   currentLimit = 0;
+
+// ── REMOVE STUDENT ATTENDANCE ────────────────────────
+async function removeStudent(name) {
+  if (!confirm(`Remove attendance for "${name}"?
+This will allow one more student to mark attendance.`)) return;
+  try {
+    const res  = await fetch(`/delete-attendance/${SESSION_ID}/${encodeURIComponent(name)}`, {method:'POST'});
+    const data = await res.json();
+    if (data.ok) {
+      // Remove from UI
+      const id = 'student-' + name.replace(/\s+/g,'-');
+      const el = document.getElementById(id);
+      if (el) el.remove();
+      knownNames.delete(name);
+      showMsg(`✓ ${name} attendance removed`, 'success');
+      // Refresh count
+      pollAttendance();
+    } else {
+      showMsg('Error: ' + data.message, 'error');
+    }
+  } catch(e) {
+    showMsg('Network error', 'error');
+  }
+}
+
+// ── CHANGE ATTENDANCE LIMIT ──────────────────────────
+async function changeLimit(delta) {
+  const newLimit = Math.max(0, currentLimit + delta);
+  try {
+    const res  = await fetch(`/update-limit/${SESSION_ID}`, {
+      method:  'POST',
+      headers: {'Content-Type':'application/json'},
+      body:    JSON.stringify({max_students: newLimit})
+    });
+    const data = await res.json();
+    if (data.ok) {
+      currentLimit = newLimit;
+      document.getElementById('limit-display').textContent = newLimit || '∞';
+      showMsg(`Limit updated to ${newLimit || 'unlimited'}`, 'info');
+      pollAttendance();
+    }
+  } catch(e) {
+    showMsg('Network error updating limit', 'error');
+  }
+}
+
+// ── SET LIMIT FROM TYPED INPUT ────────────────────────
+async function setLimitFromInput() {
+  const inputEl  = document.getElementById('limit-input');
+  const val      = parseInt(inputEl.value, 10);
+  if (isNaN(val) || val < 0) {
+    showMsg('Please enter a valid number (0 or more)', 'error');
+    return;
+  }
+  try {
+    const res  = await fetch(`/update-limit/${SESSION_ID}`, {
+      method:  'POST',
+      headers: {'Content-Type':'application/json'},
+      body:    JSON.stringify({max_students: val})
+    });
+    const data = await res.json();
+    if (data.ok) {
+      currentLimit = val;
+      document.getElementById('limit-display').textContent = val || '∞';
+      inputEl.value = '';
+      inputEl.placeholder = 'Type total count…';
+      showMsg(`Limit set to ${val || 'unlimited'}`, 'info');
+      pollAttendance();
+    }
+  } catch(e) {
+    showMsg('Network error updating limit', 'error');
+  }
+}
+
+// ── ADMIN GPS CAPTURE ─────────────────────────────────
+let adminGpsLocked = false;
+let adminGpsRetry  = null;
+
+function setBadge(msg, color) {
+  const el = document.getElementById("admin-gps-badge");
+  el.innerHTML       = msg;
+  el.style.color     = color;
+  el.style.borderColor = color;
+  el.style.background  = color === "#00ff88"
+    ? "rgba(0,255,136,0.08)"
+    : color === "#ff4444"
+    ? "rgba(255,68,68,0.08)"
+    : "rgba(255,170,0,0.08)";
+}
+
+function captureAdminLocation() {
+  if (adminGpsLocked) return;
+
+  if (!navigator.geolocation) {
+    setBadge("⚠️ GPS not supported — students use college GPS fallback", "#ffaa00");
+    return;
+  }
+
+  setBadge("📍 Getting your location... please allow location access", "#ffaa00");
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+
+      fetch(`/save-admin-location/${SESSION_ID}`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({lat: lat, lng: lng})
+      })
+      .then(r => r.json())
+      .then(d => {
+        if (d.ok) {
+          adminGpsLocked = true;
+          if (adminGpsRetry) clearInterval(adminGpsRetry);
+          setBadge(`✅ Location locked (${d.lat.toFixed(5)}, ${d.lng.toFixed(5)}) — students must be within 20m`, "#00ff88");
+          console.log("[ADMIN GPS] Saved via dedicated route:", d.lat, d.lng);
+        } else {
+          setBadge("⚠️ Location save failed — retrying...", "#ffaa00");
+          console.error("[ADMIN GPS] Error:", d.error);
+        }
+      })
+      .catch(e => {
+        setBadge("⚠️ Network error saving location — retrying...", "#ffaa00");
+        console.error("[ADMIN GPS] Fetch error:", e);
+      });
+    },
+    err => {
+      if (err.code === 1) {
+        // Permission denied
+        if (adminGpsRetry) clearInterval(adminGpsRetry);
+        setBadge("❌ Location blocked! Click 🔒 in address bar → Allow Location → Refresh page", "#ff4444");
+      } else if (err.code === 2) {
+        setBadge("⚠️ Weak GPS signal — retrying...", "#ffaa00");
+      } else {
+        setBadge("⚠️ Location timeout — retrying...", "#ffaa00");
+      }
+    },
+    {enableHighAccuracy: true, timeout: 15000, maximumAge: 0}
+  );
+}
+
+// Try immediately, then retry every 5 seconds until locked
+captureAdminLocation();
+adminGpsRetry = setInterval(() => {
+  if (!adminGpsLocked) captureAdminLocation();
+}, 5000);
+
+// ── QR CODE ───────────────────────────────────────────
+new QRCode(document.getElementById("qr-container"), {
+  text: STUDENT_URL,
+  width: 180, height: 180,
+  colorDark: "#000000", colorLight: "#ffffff"
+});
+
+// ── TIMER ─────────────────────────────────────────────
+timerInt = setInterval(() => {
+  const rem  = EXPIRES_AT - Date.now();
+  if (rem <= 0) {
+    clearInterval(timerInt);
+    document.getElementById('timer-display').textContent = '0:00';
+    document.getElementById('timer-display').style.color = 'var(--red)';
+    document.getElementById('timer-bar').style.width = '0%';
+    document.getElementById('timer-bar').style.background = 'var(--red)';
+    showMsg('Time is up! Click END SESSION to close and send emails.', 'warning');
+    return;
+  }
+  const mins  = Math.floor(rem / 60000);
+  const secs  = Math.floor((rem % 60000) / 1000);
+  const pct   = (rem / 600000) * 100;
+  const color = pct > 50 ? 'var(--lime)' : pct > 20 ? '#ffaa00' : 'var(--red)';
+  document.getElementById('timer-display').textContent = `${mins}:${String(secs).padStart(2,'0')}`;
+  document.getElementById('timer-display').style.color = color;
+  document.getElementById('timer-bar').style.width     = pct + '%';
+  document.getElementById('timer-bar').style.background = color;
+}, 1000);
+
+// ── LIVE POLL ─────────────────────────────────────────
+async function pollAttendance() {
+  try {
+    const res  = await fetch(`/live-attendance/${SESSION_ID}`);
+    const data = await res.json();
+    const list = document.getElementById('present-list');
+
+    if (data.present.length === 0) {
+      list.innerHTML = '<div style="color:var(--muted);font-size:13px;font-style:italic;">Waiting for students to mark attendance...</div>';
+      document.getElementById('count').textContent = '0';
+      return;
+    }
+
+    document.getElementById('count').textContent = data.present.length;
+
+    // Update limit display
+    const maxS = data.max_students || 0;
+    document.getElementById('limit-display').textContent = maxS || '∞';
+    currentLimit = maxS;
+    if (maxS > 0) {
+      const remaining = maxS - data.count;
+      document.getElementById('limit-status').textContent =
+        remaining > 0 ? `(${remaining} spots left)` : '(FULL ✓)';
+      document.getElementById('limit-status').style.color =
+        remaining > 0 ? '#28a745' : '#E8401C';
+    } else {
+      document.getElementById('limit-status').textContent = '';
+    }
+    document.getElementById('count').textContent =
+      maxS > 0 ? `${data.count} / ${maxS}` : data.count;
+
+    data.present.forEach(entry => {
+      if (!knownNames.has(entry.name)) {
+        knownNames.add(entry.name);
+        if (list.querySelector('div[style*="italic"]')) list.innerHTML = '';
+        const item = document.createElement('div');
+        item.className = 'student-item';
+        item.id = 'student-' + entry.name.replace(/\s+/g,'-');
+        item.innerHTML = `
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;"></span>
+          <span style="flex:1;font-size:14px;font-weight:600;">${entry.name}</span>
+          <span style="font-size:11px;color:var(--muted);font-family:monospace;margin-right:8px;">${entry.time}</span>
+          <button onclick="removeStudent('${entry.name}')"
+            style="background:#dc3545;color:white;border:none;padding:4px 10px;font-size:11px;cursor:pointer;border-radius:2px;font-weight:600;"
+            title="Remove fake attendance">✕ Remove</button>
+        `;
+        list.prepend(item);
+      }
+    });
+  } catch(e) { console.log('Poll error:', e); }
+}
+
+// Poll every 3 seconds
+pollAttendance();
+setInterval(pollAttendance, 3000);
+
+// ── END SESSION ───────────────────────────────────────
+function endSession() {
+  if (!confirm('End session and send absence alert emails?')) return;
+  clearInterval(timerInt);
+  window.location.href = `/end/${SESSION_ID}`;
+}
+
+// Auto end when timer expires
+setInterval(() => {
+  if (Date.now() > EXPIRES_AT + 5000) {
+    clearInterval(timerInt);
+  }
+}, 1000);
+</script>
+</body>
+</html>

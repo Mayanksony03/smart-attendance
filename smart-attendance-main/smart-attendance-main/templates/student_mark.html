@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Mark My Attendance — SmartAttend</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>
+.timer-ring {
+  width: 130px; height: 130px; border-radius: 50%;
+  background: conic-gradient(#cdff00 100%, #2a2a2a 0%);
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto 20px;
+}
+.timer-inner {
+  width: 104px; height: 104px; border-radius: 50%;
+  background: #0a0a0a;
+  display: flex; align-items: center; justify-content: center;
+  flex-direction: column;
+}
+.timer-num { font-family:'Bebas Neue',sans-serif; font-size:34px; color:#f0f0f0; line-height:1; }
+.timer-lbl { font-size:9px; color:#666; letter-spacing:0.1em; text-transform:uppercase; }
+.sbadge {
+  display:flex; align-items:center; gap:8px;
+  padding:10px 16px; margin-bottom:10px;
+  font-size:13px; font-weight:500;
+  border-left: 3px solid; border-radius: 2px;
+}
+.sbadge-ok   { background:rgba(0,255,136,0.08); color:#00ff88; border-color:#00ff88; }
+.sbadge-fail { background:rgba(255,68,68,0.08);  color:#ff4444; border-color:#ff4444; }
+.sbadge-wait { background:rgba(205,255,0,0.08);  color:#cdff00; border-color:#cdff00; }
+.sbadge-warn { background:rgba(255,170,0,0.08);  color:#ffaa00; border-color:#ffaa00; }
+.overlay {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.92); z-index:999;
+  align-items:center; justify-content:center;
+  flex-direction:column; gap:12px; text-align:center; padding:20px;
+}
+.loc-modal {
+  display:none; position:fixed; inset:0;
+  background:rgba(0,0,0,0.96); z-index:998;
+  align-items:center; justify-content:center;
+  flex-direction:column; gap:14px; text-align:center; padding:28px;
+}
+.loc-modal.show { display:flex; }
+.loc-steps {
+  text-align:left; background:#1a1a1a; border:1px solid #333;
+  padding:16px 20px; border-radius:4px; max-width:360px; width:100%;
+}
+.loc-steps li { color:#ccc; font-size:13px; line-height:1.9; margin-left:16px; }
+.btn-retry {
+  background:#cdff00; color:#000; border:none;
+  padding:14px 32px; font-size:14px; font-weight:700;
+  letter-spacing:0.1em; cursor:pointer; border-radius:2px;
+  text-transform:uppercase; width:100%; max-width:360px; margin-top:4px;
+}
+.btn-retry:hover { background:#b8e600; }
+.cam-blocked {
+  display:none; background:#1a1a1a; border:1px solid #ff4444;
+  padding:20px; text-align:center; border-radius:2px; margin-bottom:14px;
+}
+.cam-blocked.show { display:block; }
+</style>
+</head>
+<body>
+<!-- TOP BAR -->
+<div class="top-bar">
+  <a href="/login" class="top-bar-login">Admin Login</a>
+</div>
+
+<!-- SITE HEADER -->
+<header class="site-header">
+  <a href="/" class="site-header-logo">
+    <img src="https://tse1.mm.bing.net/th/id/OIP._cxocF1ot1j3Ar1J9xLaHgHaDB?pid=Api&h=220&P=0"
+         onerror="this.src='https://upload.wikimedia.org/wikipedia/en/thumb/2/2e/ITM_University_Gwalior_logo.png/200px-ITM_University_Gwalior_logo.png';this.onerror=null;"
+         alt="ITM University" style="height:60px;">
+    <div class="site-header-logo-text">
+      <div class="title">ITM University, Gwalior</div>
+      <div class="subtitle">Gwalior &middot; MP &middot; India &middot; "Celebrating Dreams"</div>
+    </div>
+  </a>
+  <div class="site-header-right">
+    <div class="system-name">Smart Attendance System</div>
+    <div class="system-sub">Face Recognition &middot; GPS Verification &middot; WiFi Check</div>
+  </div>
+</header>
+
+
+<div class="overlay" id="overlay">
+  <div style="font-family:'Bebas Neue',sans-serif;font-size:64px;color:#ff4444;">TIME UP</div>
+  <div style="color:#666;font-size:14px;">Attendance window has closed.</div>
+  <div style="color:#666;font-size:13px;">Contact your teacher for help.</div>
+</div>
+
+<div class="loc-modal" id="loc-modal">
+  <div style="font-family:'Bebas Neue',sans-serif;font-size:28px;color:#cdff00;">📍 LOCATION REQUIRED</div>
+  <div style="color:#aaa;font-size:14px;max-width:340px;line-height:1.6;">
+    Location permission is required to verify you are on campus. Follow these steps:
+  </div>
+  <div class="loc-steps" id="steps-ios" style="display:none;">
+    <div style="color:#cdff00;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">iPhone / Safari</div>
+    <ol>
+      <li>Open <strong style="color:#fff">Settings</strong> on your iPhone</li>
+      <li>Scroll to <strong style="color:#fff">Safari → Location</strong></li>
+      <li>Set to <strong style="color:#fff">"Ask" or "Allow"</strong></li>
+      <li>Return here and tap <strong style="color:#cdff00">Try Again</strong></li>
+    </ol>
+  </div>
+  <div class="loc-steps" id="steps-android" style="display:none;">
+    <div style="color:#cdff00;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">Android / Chrome</div>
+    <ol>
+      <li>Tap the <strong style="color:#fff">🔒 lock icon</strong> in the address bar above</li>
+      <li>Tap <strong style="color:#fff">Permissions</strong></li>
+      <li>Tap <strong style="color:#fff">Location</strong> → Select <strong style="color:#fff">Allow</strong></li>
+      <li>Tap <strong style="color:#cdff00">Try Again</strong> below</li>
+    </ol>
+  </div>
+  <div class="loc-steps" id="steps-other" style="display:none;">
+    <div style="color:#cdff00;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;margin-bottom:8px;">Enable Location</div>
+    <ol>
+      <li>Tap the 🔒 lock icon in the browser address bar</li>
+      <li>Find <strong style="color:#fff">Location</strong> or <strong style="color:#fff">Permissions</strong></li>
+      <li>Set Location to <strong style="color:#fff">Allow</strong></li>
+      <li>Tap <strong style="color:#cdff00">Try Again</strong> below</li>
+    </ol>
+  </div>
+  <button class="btn-retry" onclick="retryLocation()">↻ TRY AGAIN</button>
+  <div style="color:#444;font-size:11px;">Location data is only used for campus verification</div>
+</div>
+
+<div class="page" style="padding-top:84px;align-items:center;">
+  <div class="section-card" style="max-width:460px;width:100%;">
+
+    <div style="text-align:center;">
+      <div class="section-title" style="font-size:36px;margin-bottom:4px;">MARK<br>ATTENDANCE</div>
+      <div class="section-sub" style="margin-bottom:20px;">{{ subject_name }} — {{ subject_code }}</div>
+      <div class="timer-ring" id="timer-ring">
+        <div class="timer-inner">
+          <div class="timer-num" id="timer-num">10:00</div>
+          <div class="timer-lbl">remaining</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="status-box" style="margin-bottom:16px;">
+      <div class="sbadge sbadge-ok" id="wifi-badge">
+        <span>📶</span>&nbsp;<span id="wifi-text">Network active — check happens on submit</span>
+      </div>
+      <div class="sbadge sbadge-wait" id="gps-badge" style="cursor:default;">
+        <span>📍</span>&nbsp;<span id="gps-text">Requesting location permission...</span>
+      </div>
+    </div>
+
+    <div class="cam-blocked" id="cam-blocked">
+      <div style="color:#ff4444;font-size:14px;font-weight:600;margin-bottom:8px;">📷 Camera Access Needed</div>
+      <div style="color:#aaa;font-size:13px;line-height:1.6;">Allow camera access in your browser, then refresh the page.</div>
+      <div style="color:#666;font-size:12px;margin-top:8px;">Tap 🔒 lock icon → Camera → Allow → Refresh</div>
+    </div>
+
+    <div class="cam-wrap" id="cam-box" style="margin-bottom:14px;">
+      <video id="video" autoplay playsinline muted
+        style="width:100%;max-height:260px;object-fit:cover;"></video>
+      <div class="cam-corner tl"></div>
+      <div class="cam-corner tr"></div>
+      <div class="cam-corner bl"></div>
+      <div class="cam-corner br"></div>
+      <div class="cam-scan"></div>
+    </div>
+    <canvas id="canvas" style="display:none;" width="640" height="480"></canvas>
+
+    <button class="btn btn-primary" id="mark-btn" onclick="markAttendance()">
+      MARK MY ATTENDANCE
+    </button>
+    <div class="msg" id="msg" style="margin-top:14px;"></div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+<script>
+const SESSION_ID   = "{{ session_id }}";
+const EXPIRES_AT   = {{ expires_at }};
+const COLLEGE_LAT  = {{ college_lat }};
+const COLLEGE_LNG  = {{ college_lng }};
+const MAX_DISTANCE = {{ max_distance }};
+
+let gpsChecked  = false;
+let gpsOk       = false;
+let studentLat  = null;
+let studentLng  = null;
+let cameraReady = false;
+
+// Detect platform for instructions
+const ua        = navigator.userAgent || "";
+const isIOS     = /iPad|iPhone|iPod/.test(ua) && !window.MSStream;
+const isAndroid = /android/i.test(ua);
+
+function showLocModal() {
+  if (isIOS)         document.getElementById('steps-ios').style.display     = 'block';
+  else if (isAndroid) document.getElementById('steps-android').style.display = 'block';
+  else               document.getElementById('steps-other').style.display    = 'block';
+  document.getElementById('loc-modal').classList.add('show');
+}
+function hideLocModal() { document.getElementById('loc-modal').classList.remove('show'); }
+
+// ── CAMERA ─────────────────────────────────────────────
+// Tries front camera (selfie) first, falls back to any camera
+async function startCamera() {
+  const tries = [
+    { facingMode: "user",        width: { ideal: 640 }, height: { ideal: 480 } },
+    { facingMode: "environment", width: { ideal: 640 }, height: { ideal: 480 } },
+    true   // any camera
+  ];
+  for (const v of tries) {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: v });
+      const vid    = document.getElementById('video');
+      vid.srcObject = stream;
+      await new Promise(r => { vid.onloadedmetadata = r; });
+      cameraReady = true;
+      document.getElementById('cam-blocked').classList.remove('show');
+      document.getElementById('cam-box').style.display = '';
+      return;
+    } catch(e) { /* try next */ }
+  }
+  // All failed
+  document.getElementById('cam-box').style.display = 'none';
+  document.getElementById('cam-blocked').classList.add('show');
+  showMsg('Camera blocked. Allow camera access and refresh.', 'error');
+}
+startCamera();
+
+// ── GPS ───────────────────────────────────────────────
+function haversine(lat1, lng1, lat2, lng2) {
+  const R    = 6371000;
+  const dLat = (lat2-lat1) * Math.PI/180;
+  const dLng = (lng2-lng1) * Math.PI/180;
+  const a    = Math.sin(dLat/2)**2 +
+               Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function setGPSBadge(type, text, clickable) {
+  const el = document.getElementById('gps-badge');
+  el.className = 'sbadge sbadge-' + type;
+  el.style.cursor = clickable ? 'pointer' : 'default';
+  document.getElementById('gps-text').textContent = text;
+  if (clickable) el.onclick = showLocModal;
+  else           el.onclick = null;
+}
+
+function checkGPS() {
+  if (!navigator.geolocation) {
+    setGPSBadge('warn', 'GPS not supported — server will validate location');
+    gpsOk = true; gpsChecked = true;
+    return;
+  }
+  setGPSBadge('wait', 'Getting accurate location... please wait');
+
+  let bestAccuracy = Infinity;
+  let watchId      = null;
+  let settled      = false;
+
+  function finish(lat, lng, accuracy) {
+    if (settled) return;
+    settled    = true;
+    gpsChecked = true;
+    gpsOk      = true;
+    studentLat = lat;
+    studentLng = lng;
+    if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+    setGPSBadge('ok', 'Location ready (±' + Math.round(accuracy) + 'm accuracy) — tap to mark');
+    console.log('[GPS] Final location:', lat, lng, 'accuracy:', accuracy + 'm');
+  }
+
+  // Use watchPosition to keep refining until accuracy < 50m or 10 seconds pass
+  watchId = navigator.geolocation.watchPosition(
+    pos => {
+      const lat      = pos.coords.latitude;
+      const lng      = pos.coords.longitude;
+      const accuracy = pos.coords.accuracy;
+      console.log('[GPS] Update: accuracy=' + Math.round(accuracy) + 'm');
+
+      if (accuracy < bestAccuracy) {
+        bestAccuracy = accuracy;
+        studentLat   = lat;
+        studentLng   = lng;
+        setGPSBadge('wait', 'Improving accuracy... ±' + Math.round(accuracy) + 'm');
+      }
+
+      // Accept if accuracy is good enough (under 50 metres)
+      if (accuracy <= 50) {
+        finish(lat, lng, accuracy);
+      }
+    },
+    err => {
+      gpsChecked = true;
+      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
+      if (err.code === 1) {
+        gpsOk = false;
+        setGPSBadge('fail', '⚠️ Location denied — tap here to see how to enable', true);
+        showLocModal();
+      } else if (err.code === 2) {
+        gpsOk = true;
+        setGPSBadge('warn', 'Weak GPS signal — will try on submit');
+      } else {
+        setGPSBadge('wait', 'Location timed out — retrying...');
+        setTimeout(checkGPS, 1500);
+      }
+    },
+    { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+  );
+
+  // After 10 seconds, accept whatever we have (even if accuracy > 50m)
+  setTimeout(() => {
+    if (!settled && studentLat && studentLng) {
+      finish(studentLat, studentLng, bestAccuracy);
+    } else if (!settled) {
+      navigator.geolocation.clearWatch(watchId);
+      gpsChecked = true;
+      gpsOk      = false;
+      setGPSBadge('fail', 'Could not get location — please try again', true);
+    }
+  }, 10000);
+}
+
+function retryLocation() {
+  hideLocModal();
+  gpsChecked = false; gpsOk = false;
+  studentLat = null;  studentLng = null;
+  setGPSBadge('wait', 'Requesting location permission...');
+  checkGPS();
+}
+
+// ── TIMER ─────────────────────────────────────────────
+(function() {
+  const tick = setInterval(() => {
+    const rem = EXPIRES_AT - Date.now();
+    if (rem <= 0) {
+      clearInterval(tick);
+      document.getElementById('timer-num').textContent = '0:00';
+      document.getElementById('timer-ring').style.background = 'conic-gradient(#ff4444 100%, #2a2a2a 0%)';
+      document.getElementById('mark-btn').disabled = true;
+      document.getElementById('mark-btn').style.opacity = '0.3';
+      document.getElementById('overlay').style.display = 'flex';
+      return;
+    }
+    const mins  = Math.floor(rem / 60000);
+    const secs  = Math.floor((rem % 60000) / 1000);
+    const pct   = Math.min((rem / 600000) * 100, 100);
+    const color = pct > 50 ? '#cdff00' : pct > 20 ? '#ffaa00' : '#ff4444';
+    document.getElementById('timer-num').textContent = mins + ':' + String(secs).padStart(2,'0');
+    document.getElementById('timer-ring').style.background = 'conic-gradient(' + color + ' ' + pct + '%, #2a2a2a 0%)';
+  }, 1000);
+})();
+
+// ── MARK ATTENDANCE ───────────────────────────────────
+async function markAttendance() {
+  if (Date.now() > EXPIRES_AT) { document.getElementById('overlay').style.display='flex'; return; }
+
+  if (!gpsChecked) { showMsg('Still getting your location — please wait a moment.', 'info'); return; }
+
+  if (!studentLat || !studentLng) { showLocModal(); return; }
+
+  if (!cameraReady || !document.getElementById('video').videoWidth) {
+    showMsg('Camera not ready. Allow camera access and wait a moment.', 'error'); return;
+  }
+
+  const btn = document.getElementById('mark-btn');
+  btn.disabled = true;
+  btn.textContent = 'CHECKING LOCATION...';
+  showMsg('Fetching live classroom location...', 'info');
+
+  // ── Fetch LIVE admin GPS from server (not baked-in page values) ──
+  let refLat, refLng, maxDist, source;
+  try {
+    const locRes  = await fetch('/session-location/' + SESSION_ID);
+    const locData = await locRes.json();
+    if (!locData.ok) throw new Error('Bad response');
+    refLat  = locData.lat;
+    refLng  = locData.lng;
+    maxDist = locData.max_dist;
+    source  = locData.source;
+    console.log('[GPS] Ref location:', source, refLat, refLng, 'max:', maxDist);
+  } catch(e) {
+    showMsg('Could not fetch classroom location. Please try again.', 'error');
+    btn.disabled = false; btn.textContent = 'MARK MY ATTENDANCE';
+    return;
+  }
+
+  // ── Check distance against live reference ──
+  const dist = haversine(studentLat, studentLng, refLat, refLng);
+  console.log('[GPS] Student distance:', Math.round(dist) + 'm from ' + source);
+
+  if (dist > maxDist) {
+    setGPSBadge('fail', 'Too far from ' + (source === 'admin' ? 'classroom' : 'college') + ' — ' + Math.round(dist) + 'm (max ' + maxDist + 'm)');
+    showMsg('You are ' + Math.round(dist) + 'm away. Must be within ' + maxDist + 'm of the classroom.', 'error');
+    btn.disabled = false; btn.textContent = 'MARK MY ATTENDANCE';
+    return;
+  }
+
+  setGPSBadge('ok', 'Location verified — ' + Math.round(dist) + 'm from ' + (source === 'admin' ? 'classroom' : 'college'));
+
+  const video  = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+  const imgData = canvas.toDataURL('image/jpeg', 0.92);
+
+  btn.textContent = 'PROCESSING...';
+  showMsg('Verifying face...', 'info');
+
+  try {
+    const res  = await fetch('/student-mark/' + SESSION_ID, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: imgData, lat: studentLat, lng: studentLng })
+    });
+    const data = await res.json();
+    const msg  = data.message || 'Unknown error';
+    const lmsg = msg.toLowerCase();
+
+    if (lmsg.includes('present')) {
+      showMsg('✅ ' + msg + ' — Attendance marked successfully!', 'success');
+      btn.textContent = '✅ ATTENDANCE MARKED';
+      btn.style.background = '#2E7D32'; btn.style.color = '#fff';
+      document.getElementById('wifi-text').textContent = 'Network verified ✓';
+      document.getElementById('wifi-badge').className  = 'sbadge sbadge-ok';
+
+    } else if (lmsg.includes('wifi') || lmsg.includes('same network')) {
+      document.getElementById('wifi-text').textContent = 'Different network — connect to college WiFi';
+      document.getElementById('wifi-badge').className  = 'sbadge sbadge-fail';
+      showMsg('⚠️ ' + msg, 'error');
+      btn.disabled = false; btn.textContent = 'MARK MY ATTENDANCE';
+
+    } else if (lmsg.includes('expired')) {
+      showMsg(msg, 'error');
+      document.getElementById('overlay').style.display = 'flex';
+
+    } else if (lmsg.includes('far') || lmsg.includes('location') || lmsg.includes('distance')) {
+      setGPSBadge('fail', msg);
+      showMsg('📍 ' + msg, 'error');
+      btn.disabled = false; btn.textContent = 'MARK MY ATTENDANCE';
+
+    } else {
+      showMsg(msg, 'error');
+      btn.disabled = false; btn.textContent = 'MARK MY ATTENDANCE';
+    }
+  } catch(e) {
+    showMsg('Network error: ' + e.message, 'error');
+    btn.disabled = false; btn.textContent = 'MARK MY ATTENDANCE';
+  }
+}
+
+// ── INIT ─────────────────────────────────────────────
+if (Date.now() > EXPIRES_AT) {
+  document.getElementById('overlay').style.display = 'flex';
+} else {
+  setTimeout(checkGPS, 500);
+}
+</script>
+</body>
+</html>

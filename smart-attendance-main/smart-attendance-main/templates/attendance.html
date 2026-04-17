@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Mark Attendance — SmartAttend</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<div class="cursor"></div>
+<div class="cursor-follower"></div>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <a href="/logout" class="top-bar-login">Logout</a>
+</div>
+
+<!-- SITE HEADER -->
+<header class="site-header">
+  <a href="/" class="site-header-logo">
+    <img src="https://tse1.mm.bing.net/th/id/OIP._cxocF1ot1j3Ar1J9xLaHgHaDB?pid=Api&h=220&P=0"
+         onerror="this.src='https://upload.wikimedia.org/wikipedia/en/thumb/2/2e/ITM_University_Gwalior_logo.png/200px-ITM_University_Gwalior_logo.png';this.onerror=null;"
+         alt="ITM University" style="height:60px;">
+    <div class="site-header-logo-text">
+      <div class="title">ITM University, Gwalior</div>
+      <div class="subtitle">Gwalior &middot; MP &middot; India &middot; "Celebrating Dreams"</div>
+    </div>
+  </a>
+  <div class="site-header-right">
+    <div class="system-name">Smart Attendance System</div>
+    <div class="system-sub">Face Recognition &middot; GPS Verification &middot; WiFi Check</div>
+  </div>
+</header>
+
+<nav class="navbar">
+  <a href="/" class="navbar-brand"><div class="dot"></div>SMARTATTEND</a>
+  <div class="navbar-links">
+    <a href="/register">Register</a>
+    <a href="/create_session">Session</a>
+    <a href="/sessions" class="active">Attendance</a>
+    <a href="/logout" class="btn-logout">Logout</a>
+  </div>
+</nav>
+
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-header-title">MARK<br>ATTENDANCE</div>
+      <div class="page-header-sub">Session ID — {{ session_id }}</div>
+    </div>
+    <button class="btn btn-danger btn-sm" onclick="endSession()" style="width:auto;padding:12px 24px;">END SESSION</button>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);border:1px solid var(--border);max-width:960px;">
+    <!-- Camera -->
+    <div style="background:var(--black);padding:40px;">
+      <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:16px;">Live Camera Feed</div>
+      <div class="cam-wrap" id="cam-box">
+        <video id="video" autoplay playsinline style="width:100%;max-height:300px;object-fit:cover;"></video>
+        <div class="cam-corner tl"></div>
+        <div class="cam-corner tr"></div>
+        <div class="cam-corner bl"></div>
+        <div class="cam-corner br"></div>
+        <div class="cam-scan"></div>
+      </div>
+      <canvas id="canvas" style="display:none;" width="480" height="360"></canvas>
+      <button class="btn btn-primary" id="capture-btn" onclick="captureAndMark()" style="margin-top:16px;">
+        CAPTURE &amp; MARK ATTENDANCE →
+      </button>
+      <div class="msg" id="msg"></div>
+    </div>
+
+    <!-- Log -->
+    <div style="background:var(--gray);padding:40px;">
+      <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:20px;">
+        Session Log
+      </div>
+      <div id="log-list">
+        <div style="color:var(--muted);font-size:13px;font-style:italic;">No attendance marked yet...</div>
+      </div>
+    </div>
+  </div>
+
+  <a href="/sessions" class="back-link">← Back to Sessions</a>
+</div>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+<script>
+const SESSION_ID = "{{ session_id }}";
+let stream;
+
+navigator.mediaDevices.getUserMedia({ video: { width:480, height:360 } })
+  .then(s => { stream = s; document.getElementById('video').srcObject = s; })
+  .catch(e => showMsg('Camera error: ' + e.message, 'error'));
+
+async function captureAndMark() {
+  const video  = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  canvas.getContext('2d').drawImage(video, 0, 0, 480, 360);
+  const imgData = canvas.toDataURL('image/jpeg', 0.92);
+
+  const btn = document.getElementById('capture-btn');
+  btn.disabled = true;
+  btn.textContent = 'PROCESSING...';
+  showMsg('Scanning face...', 'info');
+
+  try {
+    const res  = await fetch(`/start/${SESSION_ID}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: imgData })
+    });
+    const data = await res.json();
+    const msg  = data.message;
+    const isOk = msg.includes('✅');
+    const isWarn = msg.includes('⚠️');
+    showMsg(msg, isOk ? 'success' : isWarn ? 'warning' : 'error');
+    addLog(msg, isOk ? 'present' : 'other');
+  } catch(e) {
+    showMsg('Error: ' + e.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'CAPTURE & MARK ATTENDANCE →';
+  }
+}
+
+let logCount = 0;
+function addLog(text, type) {
+  if (logCount === 0) document.getElementById('log-list').innerHTML = '';
+  logCount++;
+  const item = document.createElement('div');
+  item.className = 'log-item';
+  const dot = type === 'present' ? 'var(--green)' : 'var(--muted)';
+  item.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:${dot};flex-shrink:0;"></span><span style="font-size:13px;">${text}</span>`;
+  document.getElementById('log-list').prepend(item);
+}
+
+function endSession() {
+  if (!confirm('End session and send absence alert emails?')) return;
+  if (stream) stream.getTracks().forEach(t => t.stop());
+  window.location.href = `/end/${SESSION_ID}`;
+}
+</script>
+</body>
+</html>

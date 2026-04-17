@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Report — SmartAttend</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<!-- TOP BAR -->
+<div class="top-bar">
+  <a href="/logout" class="top-bar-login">Logout</a>
+</div>
+
+<!-- SITE HEADER -->
+<header class="site-header">
+  <a href="/" class="site-header-logo">
+    <img src="https://tse1.mm.bing.net/th/id/OIP._cxocF1ot1j3Ar1J9xLaHgHaDB?pid=Api&h=220&P=0"
+         onerror="this.src='https://upload.wikimedia.org/wikipedia/en/thumb/2/2e/ITM_University_Gwalior_logo.png/200px-ITM_University_Gwalior_logo.png';this.onerror=null;"
+         alt="ITM University" style="height:60px;">
+    <div class="site-header-logo-text">
+      <div class="title">ITM University, Gwalior</div>
+      <div class="subtitle">Gwalior &middot; MP &middot; India &middot; "Celebrating Dreams"</div>
+    </div>
+  </a>
+  <div class="site-header-right">
+    <div class="system-name">Smart Attendance System</div>
+    <div class="system-sub">Face Recognition &middot; GPS Verification &middot; WiFi Check</div>
+  </div>
+</header>
+
+<!-- NAV MENU -->
+<nav class="nav-menu">
+  <a href="/">Home</a>
+  {% if session.get('role') == 'admin' %}
+  <a href="/admin/branches">Branches</a>
+  <a href="/admin/teachers">Teachers</a>
+  <a href="/register">Register Student</a>
+  <a href="/delete">Manage Students</a>
+  {% elif session.get('role') == 'teacher' %}
+  <a href="/create_session">Create Session</a>
+  {% endif %}
+  <a href="/sessions">Sessions</a>
+  <a href="/logout" class="btn-logout nav-menu-right">Logout</a>
+</nav>
+
+
+{% set total   = data | length %}
+{% set present = data | selectattr('1','equalto','PRESENT') | list | length %}
+{% set absent  = total - present %}
+
+<div class="page">
+  <div class="page-header">
+    <div>
+      <div class="page-header-title">ATTENDANCE<br>REPORT</div>
+      <div class="page-header-sub">Session summary — all registered students</div>
+    </div>
+  </div>
+
+  <div class="stats-row">
+    <div class="stat-chip">
+      <strong>{{ total }}</strong>
+      Total Students
+    </div>
+    <div class="stat-chip grn">
+      <strong>{{ present }}</strong>
+      Present
+    </div>
+    <div class="stat-chip red">
+      <strong>{{ absent }}</strong>
+      Absent
+    </div>
+    {% if total > 0 %}
+    <div class="stat-chip lime">
+      <strong>{{ ((present / total) * 100) | round(1) }}%</strong>
+      Attendance Rate
+    </div>
+    {% endif %}
+  </div>
+
+  {% if total > 0 %}
+  <div class="progress-wrap">
+    <div class="progress-bar" style="width:{{ ((present / total) * 100) | round(1) }}%"></div>
+  </div>
+  {% endif %}
+
+  {% if data %}
+  <div style="border:1px solid var(--border);">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Student Name</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in data %}
+        <tr>
+          <td style="color:var(--muted);font-size:12px;font-family:monospace;">{{ loop.index }}</td>
+          <td><strong>{{ row[0] }}</strong></td>
+          <td>
+            {% if row[1] == 'PRESENT' %}
+              <span class="badge badge-present"><span class="badge-dot"></span>PRESENT</span>
+            {% else %}
+              <span class="badge badge-absent"><span class="badge-dot"></span>ABSENT</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+
+  <a href="/sessions" class="back-link">← Back to Sessions</a>
+</div>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

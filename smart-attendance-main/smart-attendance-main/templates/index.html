@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>SmartAttend</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<!-- TOP BAR -->
+<div class="top-bar">
+  <a href="/logout" class="top-bar-login">Logout</a>
+</div>
+
+<!-- SITE HEADER -->
+<header class="site-header">
+  <a href="/" class="site-header-logo">
+    <img src="https://tse1.mm.bing.net/th/id/OIP._cxocF1ot1j3Ar1J9xLaHgHaDB?pid=Api&h=220&P=0"
+         onerror="this.src='https://upload.wikimedia.org/wikipedia/en/thumb/2/2e/ITM_University_Gwalior_logo.png/200px-ITM_University_Gwalior_logo.png';this.onerror=null;"
+         alt="ITM University" style="height:60px;">
+    <div class="site-header-logo-text">
+      <div class="title">ITM University, Gwalior</div>
+      <div class="subtitle">Gwalior &middot; MP &middot; India &middot; "Celebrating Dreams"</div>
+    </div>
+  </a>
+  <div class="site-header-right">
+    <div class="system-name">Smart Attendance System</div>
+    <div class="system-sub">Face Recognition &middot; GPS Verification &middot; WiFi Check</div>
+  </div>
+</header>
+
+<!-- NAV MENU -->
+<nav class="nav-menu">
+  <a href="/">Home</a>
+  {% if session.get('role') == 'admin' %}
+  <a href="/admin/branches">Branches</a>
+  <a href="/admin/teachers">Teachers</a>
+  <a href="/register">Register Student</a>
+  <a href="/delete">Manage Students</a>
+  {% elif session.get('role') == 'teacher' %}
+  <a href="/create_session">Create Session</a>
+  {% endif %}
+  <a href="/sessions">Sessions</a>
+  <a href="/logout" class="btn-logout nav-menu-right">Logout</a>
+</nav>
+
+
+<div class="ticker">
+  <div class="ticker-inner">
+    {% for i in range(2) %}
+    <span class="ticker-item">SMART ATTENDANCE <span>✦</span></span>
+    <span class="ticker-item">FACE RECOGNITION <span>✦</span></span>
+    <span class="ticker-item">AUTO EMAIL ALERTS <span>✦</span></span>
+    <span class="ticker-item">MONGODB POWERED <span>✦</span></span>
+    <span class="ticker-item">OTP PROTECTED <span>✦</span></span>
+    <span class="ticker-item">REAL TIME MARKING <span>✦</span></span>
+    {% endfor %}
+  </div>
+</div>
+
+<div class="page">
+  <div class="hero">
+    <div class="hero-tag">AI-Powered System</div>
+    <h1 class="hero-title">
+      SMART<br>
+      <span class="outline">ATTEND</span><span class="lime">.</span>
+    </h1>
+    <p class="hero-desc">
+      Face recognition attendance system. Register once, mark instantly. Automatic absence alerts to students and parents.
+    </p>
+  </div>
+
+  <div class="nav-grid">
+    {% if session.get('role') == 'admin' %}
+    <a href="/admin/branches" class="nav-card">
+      <div class="nav-card-num">01 —</div>
+      <div class="nav-card-icon">🏛️</div>
+      <div class="nav-card-title">MANAGE BRANCHES</div>
+      <div class="nav-card-desc">Add college branches like B.Tech CSE, Pharmacy, etc</div>
+    </a>
+    <a href="/admin/teachers" class="nav-card">
+      <div class="nav-card-num">02 —</div>
+      <div class="nav-card-icon">👨‍🏫</div>
+      <div class="nav-card-title">MANAGE TEACHERS</div>
+      <div class="nav-card-desc">Add teachers with unique usernames and passwords</div>
+    </a>    
+    <a href="/register" class="nav-card">
+      <div class="nav-card-num">03 —</div>
+      <div class="nav-card-icon">👤</div>
+      <div class="nav-card-title">REGISTER STUDENT</div>
+      <div class="nav-card-desc">Capture face photo and store student profile with email details</div>
+    </a>
+    <a href="/delete" class="nav-card">
+      <div class="nav-card-num">04 —</div>
+      <div class="nav-card-icon">⚙️</div>
+      <div class="nav-card-title">MANAGE STUDENTS</div>
+      <div class="nav-card-desc">Remove registered student profiles and their attendance data</div>
+    </a>
+    {% elif session.get('role') == 'teacher' %}
+    <a href="/create_session" class="nav-card">
+      <div class="nav-card-num">01 —</div>
+      <div class="nav-card-icon">📚</div>
+      <div class="nav-card-title">CREATE SESSION</div>
+      <div class="nav-card-desc">Start a new class session for any subject and subject code</div>
+    </a>
+    <a href="/sessions" class="nav-card">
+      <div class="nav-card-num">02 —</div>
+      <div class="nav-card-icon">📸</div>
+      <div class="nav-card-title">MARK ATTENDANCE</div>
+      <div class="nav-card-desc">Use live face recognition to instantly mark who is present</div>
+    </a>
+    {% endif %}
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>

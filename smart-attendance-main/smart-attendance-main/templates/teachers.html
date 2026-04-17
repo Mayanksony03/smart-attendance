@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Manage Teachers - SmartAttend</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<!-- TOP BAR -->
+<div class="top-bar">
+  <a href="/logout" class="top-bar-login">Logout</a>
+</div>
+
+<!-- SITE HEADER -->
+<header class="site-header">
+  <a href="/" class="site-header-logo">
+    <img src="https://tse1.mm.bing.net/th/id/OIP._cxocF1ot1j3Ar1J9xLaHgHaDB?pid=Api&h=220&P=0"
+         onerror="this.src='https://upload.wikimedia.org/wikipedia/en/thumb/2/2e/ITM_University_Gwalior_logo.png/200px-ITM_University_Gwalior_logo.png';this.onerror=null;"
+         alt="ITM University" style="height:60px;">
+    <div class="site-header-logo-text">
+      <div class="title">ITM University, Gwalior</div>
+      <div class="subtitle">Gwalior &middot; MP &middot; India &middot; "Celebrating Dreams"</div>
+    </div>
+  </a>
+  <div class="site-header-right">
+    <div class="system-name">Smart Attendance System</div>
+    <div class="system-sub">Face Recognition &middot; GPS Verification &middot; WiFi Check</div>
+  </div>
+</header>
+
+<nav class="nav-menu">
+  <a href="/">Home</a>
+  {% if session.get('role') == 'admin' %}
+  <a href="/admin/branches">Branches</a>
+  <a href="/admin/teachers" class="active">Teachers</a>
+  <a href="/register">Register Student</a>
+  <a href="/delete">Manage Students</a>
+  {% elif session.get('role') == 'teacher' %}
+  <a href="/create_session">Create Session</a>
+  {% endif %}
+  <a href="/sessions">Sessions</a>
+  <a href="/logout" class="btn-logout nav-menu-right">Logout</a>
+</nav>
+
+<div class="page">
+  <div class="hero">
+    <h1 class="hero-title">MANAGE<br><span class="outline">TEACHERS</span></h1>
+    <p class="hero-desc">Register teachers and assign them to specific branches.</p>
+  </div>
+
+  <div class="auth-box">
+    <form method="POST">
+      <div style="margin-bottom: 1rem;">
+        <label>Teacher Name</label>
+        <input type="text" name="name" class="input-text" required placeholder="Ex. John Doe">
+      </div>
+      <div style="margin-bottom: 1rem;">
+        <label>Employee ID</label>
+        <input type="text" name="employee_id" class="input-text" required placeholder="EMP-1001">
+      </div>
+      <div style="margin-bottom: 1rem;">
+        <label>Branch</label>
+        <select name="branch" class="input-text" required>
+          <option value="" disabled selected>Select Branch</option>
+          {% for branch in branches %}
+          <option value="{{ branch.name }}">{{ branch.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div style="margin-bottom: 1rem;">
+        <label>Username (used for login)</label>
+        <input type="text" name="username" class="input-text" required>
+      </div>
+      <div style="margin-bottom: 1.5rem;">
+        <label>Password</label>
+        <input type="text" name="password" class="input-text" required>
+      </div>
+      <button type="submit" class="btn">Register Teacher</button>
+    </form>
+  </div>
+
+  <div style="margin-top: 2rem;">
+    <h2>Current Teachers</h2>
+    <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+      <tr style="border-bottom: 2px solid #555;">
+        <th style="padding: 10px; text-align: left;">Name</th>
+        <th style="padding: 10px; text-align: left;">Employee ID</th>
+        <th style="padding: 10px; text-align: left;">Branch</th>
+        <th style="padding: 10px; text-align: left;">Username</th>
+      </tr>
+      {% for teacher in teachers %}
+      <tr style="border-bottom: 1px solid #333;">
+        <td style="padding: 10px;">{{ teacher.name }}</td>
+        <td style="padding: 10px;">{{ teacher.employee_id }}</td>
+        <td style="padding: 10px;">{{ teacher.branch }}</td>
+        <td style="padding: 10px;">{{ teacher.username }}</td>
+      </tr>
+      {% else %}
+      <tr><td colspan="4" style="padding: 10px; color: #888;">No teachers added yet.</td></tr>
+      {% endfor %}
+    </table>
+  </div>
+</div>
+</body>
+</html>
